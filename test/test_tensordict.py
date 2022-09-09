@@ -19,6 +19,7 @@ from torchrl.data.tensordict.tensordict import (
     stack as stack_td,
     pad,
     TensorDictBase,
+    SubTensorDict,
 )
 from torchrl.data.tensordict.utils import _getitem_batch_size, convert_ellipsis_to_idx
 
@@ -759,9 +760,12 @@ class TestTensorDicts:
     def test_expand(self, td_name, device):
         torch.manual_seed(1)
         td = getattr(self, td_name)(device)
-        batch_size = td.batch_size
+        if isinstance(td, SubTensorDict):
+            batch_size = td._source.batch_size
+        else:
+            batch_size = td.batch_size
         new_td = td.expand(3, *batch_size)
-        assert new_td.batch_size == torch.Size([3, *batch_size])
+        assert new_td.batch_size == torch.Size([3, *td.batch_size])
         assert all((_new_td == td).all() for _new_td in new_td)
 
     def test_cast(self, td_name, device):
@@ -1225,7 +1229,10 @@ class TestTensorDicts:
     def test_stack_subclasses_on_td(self, td_name, device):
         torch.manual_seed(1)
         td = getattr(self, td_name)(device)
-        td = td.expand([3, *td.batch_size]).to_tensordict().clone().zero_()
+        if isinstance(td, SubTensorDict):
+            td = td.expand(3, *td._source.batch_size).to_tensordict().clone().zero_()
+        else:
+            td = td.expand(3, *td.batch_size).to_tensordict().clone().zero_()
         tds_list = [getattr(self, td_name)(device) for _ in range(3)]
         stacked_td = stack_td(tds_list, 0, out=td)
         assert stacked_td.batch_size == td.batch_size
@@ -1487,10 +1494,13 @@ class TestTensorDictsRequiresGrad:
     def test_expand(self, td_name, device):
         torch.manual_seed(1)
         td = getattr(self, td_name)(device)
-        batch_size = td.batch_size
+        if isinstance(td, SubTensorDict):
+            batch_size = td._source.batch_size
+        else:
+            batch_size = td.batch_size
         new_td = td.expand(3, *batch_size)
         assert new_td._get_meta("b").requires_grad
-        assert new_td.batch_size == torch.Size([3, *batch_size])
+        assert new_td.batch_size == torch.Size([3, *td.batch_size])
 
     def test_cast(self, td_name, device):
         torch.manual_seed(1)

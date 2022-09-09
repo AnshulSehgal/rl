@@ -3004,8 +3004,10 @@ torch.Size([3, 2])
         return self._source.select(*keys)[self.idx]
 
     def expand(self, *shape: int, inplace: bool = False) -> TensorDictBase:
+        source_dims = self._source.batch_dims
+        new_dims = len(shape)
         new_source = self._source.expand(*shape)
-        idx = tuple(slice(None) for _ in shape) + tuple(self.idx)
+        idx = tuple(slice(None) for _ in range(new_dims - source_dims)) + tuple(self.idx)
         if inplace:
             self._source = new_source
             self.idx = idx
@@ -3565,8 +3567,9 @@ class LazyStackedTensorDict(TensorDictBase):
         return self
 
     def expand(self, *shape: int, inplace: bool = False) -> TensorDictBase:
-        stack_dim = self.stack_dim + len(shape)
-        tensordicts = [td.expand(*shape) for td in self.tensordicts]
+        stack_dim = len(shape) + self.stack_dim - self.ndimension()
+        new_shape_tensordicts = [v for i, v in enumerate(shape) if i != stack_dim]
+        tensordicts = [td.expand(*new_shape_tensordicts) for td in self.tensordicts]
         if inplace:
             self.tensordicts = tensordicts
             self.stack_dim = stack_dim
