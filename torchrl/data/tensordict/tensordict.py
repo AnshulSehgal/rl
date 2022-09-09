@@ -3007,7 +3007,9 @@ torch.Size([3, 2])
         source_dims = self._source.batch_dims
         new_dims = len(shape)
         new_source = self._source.expand(*shape)
-        idx = tuple(slice(None) for _ in range(new_dims - source_dims)) + tuple(self.idx)
+        idx = tuple(slice(None) for _ in range(new_dims - source_dims)) + tuple(
+            self.idx
+        )
         if inplace:
             self._source = new_source
             self.idx = idx
